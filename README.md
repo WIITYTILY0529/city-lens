@@ -1,5 +1,9 @@
 # 도시결 · City Lens
 
+공개 사이트: https://wiitytily0529.github.io/city-lens/
+
+main 브랜치에 변경 사항을 올리면 GitHub Actions가 dist 폴더를 GitHub Pages에 자동 배포합니다.
+
 228개 지역에서 연령 구성, 자연경관, 브랜드 매장 수가 비슷한 도시를 탐색하는 정적 웹사이트입니다.
 
 ## 사용하기
