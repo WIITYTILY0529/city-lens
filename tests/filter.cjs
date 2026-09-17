@@ -3,13 +3,13 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const data = JSON.parse(fs.readFileSync('dist/data.json', 'utf8'));
 const nodes = new Map();
-const document = {getElementById(id) {
+const document = {querySelectorAll(){return []},getElementById(id) {
   if (!nodes.has(id)) nodes.set(id, {value:'',checked:true,events:{},attributes:{},
     addEventListener(type,fn){this.events[type]=fn},
     setAttribute(key,value){this.attributes[key]=value}});
   return nodes.get(id);
 }};
-const context = {document,window:{},console,Intl,fetch:async()=>({ok:true,json:async()=>data})};
+const context = {document,window:{},console,Intl,fetch:async(url)=>({ok:true,json:async()=>url==='map.json'?JSON.parse(fs.readFileSync('dist/map.json','utf8')):data})};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('dist/app.js','utf8'),context);
 setImmediate(()=>{
@@ -32,6 +32,19 @@ setImmediate(()=>{
       assert.equal(JSON.stringify(api.getState().nearest),JSON.stringify(before.nearest));
     }
   }
+  api.configure({cityId:12,age:true,nature:true,brand:true});
+  document.getElementById('view-space').events.click();
+  assert.equal(document.getElementById('map-view').hidden,true);
+  assert.equal(document.getElementById('space-view').hidden,false);
+  document.getElementById('view-map').events.click();
+  assert.equal(document.getElementById('map-view').hidden,false);
+  const next=api.getState().nearest[1].id;
+  document.getElementById('geography').events.click({target:{closest:()=>({dataset:{region:String(next)}})}});
+  assert.equal(api.getState().base,12);
+  assert.equal(api.getState().compare,next);
+  document.getElementById('geography').events.keydown({key:'Enter',preventDefault(){},target:{closest:()=>({dataset:{region:'0'}})}});
+  assert.equal(api.getState().base,0);
+  assert.equal((document.getElementById('geography').innerHTML.match(/data-region=/g)||[]).length,228);
   api.configure({cityId:0,age:false,nature:false,brand:false});
   document.getElementById('exclude-metro').events.click();
   assert.equal(document.getElementById('active-results').hidden,true);
