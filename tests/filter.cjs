@@ -15,8 +15,8 @@ vm.runInContext(fs.readFileSync('dist/app.js','utf8'),context);
 setImmediate(()=>{
   const api=context.window.cityLens;
   for(const base of data.regions){
-    for(let mask=1;mask<8;mask++){
-      api.configure({cityId:base.id,age:!!(mask&1),nature:!!(mask&2),brand:!!(mask&4)});
+    for(let mask=1;mask<16;mask++){
+      api.configure({cityId:base.id,age:!!(mask&1),nature:!!(mask&2),brand:!!(mask&4),heritage:!!(mask&8)});
       const before=api.getState();
       document.getElementById('exclude-metro').events.click();
       const after=api.getState();
@@ -30,9 +30,15 @@ setImmediate(()=>{
       }
       document.getElementById('exclude-metro').events.click();
       assert.equal(JSON.stringify(api.getState().nearest),JSON.stringify(before.nearest));
+      document.getElementById('exclude-same').events.click();
+      const outside=api.getState();
+      assert.equal(outside.nearest.length,10);
+      for(const r of outside.nearest) assert.notEqual(data.regions[r.id].province,base.province);
+      document.getElementById('exclude-same').events.click();
+      assert.equal(JSON.stringify(api.getState().nearest),JSON.stringify(before.nearest));
     }
   }
-  api.configure({cityId:12,age:true,nature:true,brand:true});
+  api.configure({cityId:12,age:true,nature:true,brand:true,heritage:true});
   document.getElementById('view-space').events.click();
   assert.equal(document.getElementById('map-view').hidden,true);
   assert.equal(document.getElementById('space-view').hidden,false);
@@ -45,8 +51,10 @@ setImmediate(()=>{
   document.getElementById('geography').events.keydown({key:'Enter',preventDefault(){},target:{closest:()=>({dataset:{region:'0'}})}});
   assert.equal(api.getState().base,0);
   assert.equal((document.getElementById('geography').innerHTML.match(/data-region=/g)||[]).length,228);
-  api.configure({cityId:0,age:false,nature:false,brand:false});
+  assert.equal((document.getElementById('geography').innerHTML.match(/class="map-rank"/g)||[]).length,10);
+  assert(document.getElementById('consumption-cards').innerHTML.includes('객단가'));
+  api.configure({cityId:0,age:false,nature:false,brand:false,heritage:false});
   document.getElementById('exclude-metro').events.click();
   assert.equal(document.getElementById('active-results').hidden,true);
-  console.log('Passed 228 cities × 7 criteria: exclusion, base preservation, unchanged K/scores, restoration and empty state');
+  console.log('Passed 228 cities × 15 criteria: both exclusions, ranked map, consumption cards, restoration and empty state');
 });
