@@ -18,18 +18,6 @@ setImmediate(()=>{
     for(let mask=1;mask<16;mask++){
       api.configure({cityId:base.id,age:!!(mask&1),nature:!!(mask&2),brand:!!(mask&4),heritage:!!(mask&8)});
       const before=api.getState();
-      document.getElementById('exclude-metro').events.click();
-      const after=api.getState();
-      assert.equal(after.base,base.id); assert.equal(after.k,before.k);
-      assert.equal(after.nearest.length,10);
-      for(const r of after.nearest){
-        assert.notEqual(r.id,base.id);
-        assert(!['서울특별시','인천광역시'].includes(data.regions[r.id].province));
-        const old=before.nearest.find(x=>x.id===r.id);
-        if(old) assert.equal(old.score,r.score);
-      }
-      document.getElementById('exclude-metro').events.click();
-      assert.equal(JSON.stringify(api.getState().nearest),JSON.stringify(before.nearest));
       document.getElementById('exclude-same').events.click();
       const outside=api.getState();
       assert.equal(outside.nearest.length,10);
@@ -54,7 +42,6 @@ setImmediate(()=>{
   assert.equal((document.getElementById('geography').innerHTML.match(/class="map-rank"/g)||[]).length,10);
   assert(document.getElementById('consumption-cards').innerHTML.includes('객단가'));
   api.configure({cityId:0,age:false,nature:false,brand:false,heritage:false});
-  document.getElementById('exclude-metro').events.click();
   assert.equal(document.getElementById('active-results').hidden,true);
-  console.log('Passed 228 cities × 15 criteria: both exclusions, ranked map, consumption cards, restoration and empty state');
+  console.log('Passed 228 cities × 15 criteria: same-province exclusion, ranked map, consumption cards, restoration and empty state');
 });

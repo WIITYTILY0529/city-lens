@@ -15,9 +15,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input', type=Path, default=PARENT/'연령_산_바다_브랜드_군집분석'/'지역별_원시피처.csv')
 parser.add_argument('--profile', type=Path, default=PARENT/'지역별_상권분석'/'255개_시군구_상권프로필.csv')
 parser.add_argument('--industry', type=Path, default=PARENT/'지역별_상권분석'/'시군구별_업종비중_특화지수.csv')
+parser.add_argument('--brands', type=Path, default=ROOT/'data'/'expanded_brand_counts.csv')
 args = parser.parse_args()
 
 d = pd.read_csv(args.input)
+brand_counts = pd.read_csv(args.brands)
+d = d.drop(columns=['지정브랜드_매장수','스타벅스','올리브영']).merge(brand_counts,on=['SIDO_NM','CCG_NM'],validate='one_to_one')
 n = len(d)
 age_cols = ['20대_이하_비중','20대_비중','30대_비중','40대_비중','50대_비중','60대_이상_비중']
 count_cols = ['자료내_산수','자료내_해수욕장수','지정브랜드_매장수']
@@ -80,7 +83,7 @@ for i,r in d.iterrows():
     regions.append({
         'id':i,'province':r.SIDO_NM,'name':r.CCG_NM,'population':int(r.인구합계),
         'raw':raw[i].round(7).tolist(),'percentiles':percentiles[i].round(2).tolist(),
-        'starbucks':int(r.스타벅스),'oliveyoung':int(r.올리브영),
+        'starbucks':int(r.스타벅스),'oliveyoung':int(r.올리브영),'cinema':int(r.영화관),'mcdonalds':int(r.맥도날드),
         'heritageNames':heritage_by_region.get(key,[]),'consumption':consumer[key]
     })
 

@@ -4,7 +4,7 @@ const labels=['20대_이하','20대','30대','40대','50대','60대 이상','산
 const shortProvince=s=>s.replace('특별자치도','').replace('특별자치시','').replace('특별시','').replace('광역시','');
 const fmt=n=>new Intl.NumberFormat('ko-KR').format(n);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let G=null,mapMode=true,D,base=0,compare=0,mask=15,nearest=[],excludeMetro=false,excludeSame=false;
+let G=null,mapMode=true,D,base=0,compare=0,mask=15,nearest=[],excludeSame=false;
 const activeDims=()=>[...((mask&1)?[0,1,2,3,4,5]:[]),...((mask&2)?[6,7]:[]),...((mask&4)?[8]:[]),...((mask&8)?[9]:[])];
 const selectedGroups=()=>Number(!!(mask&1))+Number(!!(mask&2))+Number(!!(mask&4))+Number(!!(mask&8));
 
@@ -19,7 +19,6 @@ function populate(){
 function rank(){
  const ids=activeDims(),groups=selectedGroups(),b=D.regions[base];
  nearest=D.regions.filter(r=>r.id!==base)
-  .filter(r=>!excludeMetro||!['서울특별시','인천광역시'].includes(r.province))
   .filter(r=>!excludeSame||r.province!==b.province)
   .map(r=>{const distance=Math.sqrt(ids.reduce((s,i)=>s+(D.vectors[r.id][i]-D.vectors[base][i])**2,0)/groups);return {...r,distance,score:100/(1+distance)};})
   .sort((a,b)=>a.distance-b.distance||a.id-b.id).slice(0,10);
@@ -28,9 +27,8 @@ function render(reset=true){
  const b=D.regions[base];
  $('province').textContent=b.province;$('city-name').textContent=b.name;$('population').textContent=fmt(b.population)+'명';
  $('empty').hidden=!!mask;$('active-results').hidden=!mask;
- $('exclude-metro').setAttribute('aria-pressed',String(excludeMetro));$('exclude-same').setAttribute('aria-pressed',String(excludeSame));
- const notes=[];if(excludeMetro)notes.push('서울·인천');if(excludeSame)notes.push(`같은 시·도(${shortProvince(b.province)})`);
- $('candidate-note').textContent=notes.length?`${notes.join('와 ')}를 유사 도시 후보에서 제외했습니다. 군집 모델은 그대로입니다.`:'전국 모든 지역을 유사 도시 후보로 봅니다.';
+ $('exclude-same').setAttribute('aria-pressed',String(excludeSame));
+ $('candidate-note').textContent=excludeSame?`같은 시·도(${shortProvince(b.province)})를 유사 도시 후보에서 제외했습니다. 군집 모델은 그대로입니다.`:'전국 모든 지역을 유사 도시 후보로 봅니다.';
  if(!mask)return;
  rank();if(reset||!nearest.some(r=>r.id===compare))compare=nearest[0].id;
  const model=D.models[mask];
@@ -83,7 +81,7 @@ function drawRadar(){
 function renderTable(){
  const b=D.regions[base],c=D.regions[compare],ids=new Set(activeDims());$('table-base').textContent=b.name;$('table-compare').textContent=c.name;
  const value=(r,i)=>i<6?(r.raw[i]*100).toFixed(1)+'%':i<9?fmt(r.raw[i])+'개':r.raw[i]?'소재':'없음';
- $('comparison').innerHTML=labels.map((label,i)=>`<tr class="${ids.has(i)?'':'off'}"><td>${label}${ids.has(i)?'':' <small>비교 제외</small>'}</td><td>${value(b,i)}</td><td>${value(c,i)}</td></tr>`).join('')+`<tr><td>세계유산 명칭</td><td>${esc(b.heritageNames.join(' · ')||'해당 없음')}</td><td>${esc(c.heritageNames.join(' · ')||'해당 없음')}</td></tr><tr><td>매장 수 구성</td><td>스타벅스 ${b.starbucks} · 올리브영 ${b.oliveyoung}</td><td>스타벅스 ${c.starbucks} · 올리브영 ${c.oliveyoung}</td></tr>`;
+ $('comparison').innerHTML=labels.map((label,i)=>`<tr class="${ids.has(i)?'':'off'}"><td>${label}${ids.has(i)?'':' <small>비교 제외</small>'}</td><td>${value(b,i)}</td><td>${value(c,i)}</td></tr>`).join('')+`<tr><td>세계유산 명칭</td><td>${esc(b.heritageNames.join(' · ')||'해당 없음')}</td><td>${esc(c.heritageNames.join(' · ')||'해당 없음')}</td></tr><tr><td>매장 수 구성</td><td>스타벅스 ${b.starbucks} · 올리브영 ${b.oliveyoung} · 영화관 ${b.cinema} · 맥도날드 ${b.mcdonalds}</td><td>스타벅스 ${c.starbucks} · 올리브영 ${c.oliveyoung} · 영화관 ${c.cinema} · 맥도날드 ${c.mcdonalds}</td></tr>`;
 }
 function renderConsumption(){
  const means=D.sectorNames.map((_,i)=>nearest.reduce((s,r)=>s+r.consumption.sectors[i],0)/nearest.length);
@@ -116,12 +114,12 @@ async function init(){
   for(const [id,bit] of [['age',1],['nature',2],['brand',4],['heritage',8]])$(id).addEventListener('change',()=>{mask=($('age').checked?1:0)|($('nature').checked?2:0)|($('brand').checked?4:0)|($('heritage').checked?8:0);render();});
   $('view-map').addEventListener('click',()=>setView(true));$('view-space').addEventListener('click',()=>setView(false));
   $('geography').addEventListener('click',onMapPick);$('geography').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onMapPick(e);}});
-  $('exclude-metro').addEventListener('click',()=>{excludeMetro=!excludeMetro;render();});$('exclude-same').addEventListener('click',()=>{excludeSame=!excludeSame;render();});
+  $('exclude-same').addEventListener('click',()=>{excludeSame=!excludeSame;render();});
   for(const id of ['ranking','consumption-cards'])$(id).addEventListener('click',e=>{const button=e.target.closest('[data-city]');if(button)selectCompare(Number(button.dataset.city));});
   $('constellation').addEventListener('click',e=>{const g=e.target.closest('[data-node]');if(g)selectCompare(Number(g.dataset.node));});
   $('constellation').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const g=e.target.closest('[data-node]');if(g){e.preventDefault();selectCompare(Number(g.dataset.node));}}});
   const configure=input=>{if(!input||typeof input!=='object')throw new Error('설정 객체가 필요합니다.');if(!Number.isInteger(input.cityId)||!D.regions[input.cityId])throw new Error('유효한 도시 ID가 필요합니다.');for(const key of ['age','nature','brand','heritage'])if(typeof input[key]!=='boolean')throw new Error('기준은 true 또는 false여야 합니다.');base=input.cityId;mask=(input.age?1:0)|(input.nature?2:0)|(input.brand?4:0)|(input.heritage?8:0);$('search').value='';populate();for(const id of ['age','nature','brand','heritage'])$(id).checked=input[id];render();return {city:D.regions[base].name,recommendedK:mask?D.models[mask].recommendedK:null,similar:mask?nearest.map(r=>({id:r.id,name:r.name,score:Number(r.score.toFixed(1))})):[]};};
-  window.cityLens={configure,getState:()=>({base,compare,mask,excludeMetro,excludeSame,nearest:nearest.map(r=>({id:r.id,score:r.score})),k:mask?D.models[mask].recommendedK:null})};
+  window.cityLens={configure,getState:()=>({base,compare,mask,excludeSame,nearest:nearest.map(r=>({id:r.id,score:r.score})),k:mask?D.models[mask].recommendedK:null})};
   if(document.modelContext?.registerTool)try{await document.modelContext.registerTool({name:'configure_city_comparison',description:'기준 도시와 연령·자연·브랜드·세계유산 선택을 변경하고 유사 도시를 반환합니다.',inputSchema:{type:'object',properties:{cityId:{type:'integer'},age:{type:'boolean'},nature:{type:'boolean'},brand:{type:'boolean'},heritage:{type:'boolean'}},required:['cityId','age','nature','brand','heritage'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute:configure});}catch(e){console.warn('도시 비교 도구 등록을 지원하지 않는 환경입니다.');}
  }catch(error){$('load-status').textContent='지역 데이터를 불러오지 못했습니다. 잠시 후 새로고침해주세요.';console.error(error);}
 }
